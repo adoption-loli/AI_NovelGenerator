@@ -5,7 +5,9 @@ import logging
 import re
 import traceback
 from typing import List, Optional
+import datetime
 
+from langchain_core.messages import BaseMessage, AIMessage
 # langchain 相关
 from langchain_openai import ChatOpenAI
 from langchain_openai import OpenAIEmbeddings
@@ -43,7 +45,7 @@ from chapter_directory_parser import get_chapter_info_from_directory
 
 
 # ============ 日志配置 ============
-logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+# logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
 
 # ============ 通用调用函数 ============
@@ -57,7 +59,57 @@ def invoke_with_cleaning(model: ChatOpenAI, prompt: str) -> str:
     """
     通用封装：调用模型并移除 <think>...</think> 文本，记录日志后返回
     """
-    response = model.invoke(prompt)
+    logging.info(f"[prompt] {prompt.replace('\\n', '\n')}")
+    total_request_start_time = datetime.datetime.now()
+    import time
+    model.streaming = True
+    time.sleep(1)
+    # 先礼后兵 浪费钱
+    # for chunk in model.stream("你好"):
+    #     if len(chunk.content) == 0:
+    #         print("\r 还在思考中，返回空白内容...", end='')
+    #         continue
+    #     logging.info(f"[return msg] {chunk.content}")
+    try:
+        # response = model.invoke(prompt)
+        from langchain_community.chat_message_histories import ChatMessageHistory
+        chat_history = ChatMessageHistory()
+        chat_history.add_user_message(prompt + "\n在末尾请发出###表示你的回答已经结束，末尾不要有###以外的任何多余符号")
+        msg = ""
+        before_len = 0
+        request_start_time = datetime.datetime.now()
+        for chunk in model.stream(chat_history.messages):
+            if len(chunk.content) == 0:
+                print("\r 还在思考中，返回空白内容...", end='')
+                continue
+            print(f"{chunk.content}", end='')
+            msg += chunk.content
+        chat_history.add_ai_message(msg[before_len:])
+        before_len = len(msg)
+        request_spend_time = datetime.datetime.now() - request_start_time
+        print(f"\n回答告一段落，本次回答耗时{request_spend_time}")
+        while not msg.strip().endswith("###"):
+            request_start_time = datetime.datetime.now()
+            chat_history.add_user_message("请接着最后一句话继续。如果最后一句话没有说完，就将最后一句话补全后再继续\n在末尾请发出###表示你的回答已经结束，末尾不要有###以外的任何多余符号")
+            for chunk in model.stream(chat_history.messages):
+                if len(chunk.content) == 0:
+                    print("\r 还在思考中，返回空白内容...", end='')
+                    continue
+                print(f"{chunk.content}", end='')
+                msg += chunk.content
+            chat_history.add_ai_message(msg[before_len:])
+            before_len = len(msg)
+            request_spend_time = datetime.datetime.now() - request_start_time
+            print(f"\n回答告一段落，本次回答耗时{request_spend_time}")
+        logging.info(f"\n思考完毕,全文长度{len(msg)}")
+        response = AIMessage(content=msg)
+    except Exception as e:
+        total_request_spend_time = datetime.datetime.now() - total_request_start_time
+        logging.info(f"请求耗时{total_request_spend_time}ms 请求失败")
+        raise e
+    print('\a')
+    request_spend_time = datetime.datetime.now() - request_start_time
+    logging.info(f"请求耗时{request_spend_time}ms")
     if not response:
         logging.warning("No response from model.")
         return ""
@@ -308,7 +360,9 @@ def Novel_setting_generate(
         model=llm_model,
         api_key=api_key,
         base_url=ensure_openai_base_url_has_v1(base_url),  # 确保带 /v1
-        temperature=temperature
+        temperature=temperature,
+        max_tokens=8192,
+        max_retries=100
     )
 
     # Step1: 基础设定
@@ -373,7 +427,9 @@ def Novel_directory_generate(
         model=llm_model,
         api_key=api_key,
         base_url=ensure_openai_base_url_has_v1(base_url),
-        temperature=temperature
+        temperature=temperature,
+        max_tokens=8192,
+        max_retries=100
     )
 
     # 生成目录
@@ -434,7 +490,9 @@ def summarize_recent_chapters(
         model=llm_model,
         api_key=api_key,
         base_url=ensure_openai_base_url_has_v1(base_url),
-        temperature=temperature
+        temperature=temperature,
+        max_tokens=8192,
+        max_retries=100
     )
 
     combined_text = "\n".join(chapters_text_list)
@@ -474,7 +532,9 @@ def update_plot_arcs(
         model=model_name,
         api_key=api_key,
         base_url=ensure_openai_base_url_has_v1(base_url),
-        temperature=temperature
+        temperature=temperature,
+        max_tokens=8192,
+        max_retries=100
     )
     prompt = PLOT_ARCS_PROMPT.format(
         chapter_text=chapter_text,
@@ -543,7 +603,9 @@ def generate_chapter_draft(
         model=model_name,
         api_key=api_key,
         base_url=ensure_openai_base_url_has_v1(base_url),
-        temperature=temperature
+        temperature=temperature,
+        max_tokens=8192,
+        max_retries=100
     )
 
     # 3) 生成本章大纲
@@ -645,7 +707,9 @@ def finalize_chapter(
         model=model_name,
         api_key=api_key,
         base_url=ensure_openai_base_url_has_v1(base_url),
-        temperature=temperature
+        temperature=temperature,
+        max_tokens=8192,
+        max_retries=100
     )
 
     def update_global_summary(chapter_text: str, old_summary: str) -> str:
@@ -714,7 +778,9 @@ def enrich_chapter_text(
         model=model_name,
         api_key=api_key,
         base_url=ensure_openai_base_url_has_v1(base_url),
-        temperature=temperature
+        temperature=temperature,
+        max_tokens=8192,
+        max_retries=100
     )
     prompt = f"""以下是当前章节文本，可能篇幅较短，请在保持剧情连贯的前提下进行扩写，使其更充实、生动，并尽量靠近目标 {word_number} 字数。
 

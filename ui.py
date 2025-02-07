@@ -74,11 +74,11 @@ class NovelGeneratorGUI:
 
         # 创建各个Tab
         self.main_tab = self.tabview.add("Main Functions")
-        self.setting_tab = self.tabview.add("Novel Settings")
-        self.directory_tab = self.tabview.add("Novel Directory")
-        self.character_tab = self.tabview.add("Character State")
-        self.summary_tab = self.tabview.add("Global Summary")
-        self.chapters_view_tab = self.tabview.add("Chapters Manage")
+        self.setting_tab = self.tabview.add("设定")
+        self.directory_tab = self.tabview.add("目录")
+        self.character_tab = self.tabview.add("章节状态")
+        self.summary_tab = self.tabview.add("全文摘要")
+        self.chapters_view_tab = self.tabview.add("章节管理")
 
         # 构建各个 Tab 的布局
         self.build_main_tab()
@@ -379,7 +379,7 @@ class NovelGeneratorGUI:
 
         temp_scale = ctk.CTkSlider(
             self.ai_config_tab,
-            from_=0.0, to=1.0,
+            from_=0.0, to=2.0,
             number_of_steps=100,
             command=update_temp_label,
             variable=self.temperature_var
@@ -579,11 +579,12 @@ class NovelGeneratorGUI:
             width=200,
             height=80,
             wrap="word",
-            font=("Microsoft YaHei", 12)
+            font=("Microsoft YaHei", 12),
         )
+        self.user_guide_text.insert("1.0", "本章要求轻松，叙事偏日常，要体现社会平稳自由，经济繁荣昌盛，人民幸福安康的一面，尽量少地使用专业名词，以通俗易懂的文风进行编写")
         self.user_guide_text.grid(row=6, column=1, padx=5, pady=5, sticky="nsew")
 
-    # ------------------ 其他Tab的构建 ------------------ 
+    # ---- -------------- 其他Tab的构建 ------------------
     def build_setting_tab(self):
         self.setting_tab.rowconfigure(0, weight=0)
         self.setting_tab.rowconfigure(1, weight=1)
