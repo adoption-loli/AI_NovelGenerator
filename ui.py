@@ -248,7 +248,7 @@ class NovelGeneratorGUI:
         """
         self.optional_btn_frame = ctk.CTkFrame(self.right_frame)
         self.optional_btn_frame.grid(row=start_row, column=0, sticky="ew", padx=5, pady=5)
-        self.optional_btn_frame.columnconfigure((0, 1, 2, 3), weight=1)
+        self.optional_btn_frame.columnconfigure((0, 1, 2, 3, 4), weight=1)
 
         self.btn_check_consistency = ctk.CTkButton(
             self.optional_btn_frame,
@@ -282,6 +282,14 @@ class NovelGeneratorGUI:
             font=("Microsoft YaHei", 12)
         )
         self.plot_arcs_btn.grid(row=0, column=3, padx=5, pady=5, sticky="ew")
+
+        self.one_key_gen = ctk.CTkButton(
+            self.optional_btn_frame,
+            text="一键从头生成全文",
+            command=self.on_key_gen_handler,
+            font=("Microsoft YaHei", 12)
+        )
+        self.one_key_gen.grid(row=0, column=4, padx=5, pady=5, sticky="ew")
 
     # ========== 配置区域（TabView） ==========
     def build_config_tabview(self):
@@ -581,7 +589,7 @@ class NovelGeneratorGUI:
             wrap="word",
             font=("Microsoft YaHei", 12),
         )
-        self.user_guide_text.insert("1.0", "本章要求轻松，叙事偏日常，要体现社会平稳自由，经济繁荣昌盛，人民幸福安康的一面，尽量少地使用专业名词，以通俗易懂的文风进行编写")
+        self.user_guide_text.insert("1.0", "模仿刘慈欣的相关作品里的文风进行编写")
         self.user_guide_text.grid(row=6, column=1, padx=5, pady=5, sticky="nsew")
 
     # ---- -------------- 其他Tab的构建 ------------------
@@ -901,14 +909,15 @@ class NovelGeneratorGUI:
         self.master.after(0, lambda: btn.configure(state="normal"))
 
     # ------------------ 分步操作：生成设定、目录、章节草稿、定稿 ------------------ 
-    def generate_novel_setting_ui(self):
+    def generate_novel_setting_ui(self, thread_return: list[bool] | None = None) -> bool:
         """Step1. 生成小说设定（Novel_setting.txt）"""
         filepath = self.filepath_var.get().strip()
         if not filepath:
-            messagebox.showwarning("警告", "请先选择保存文件路径")
-            return
+            # messagebox.showwarning("警告", "请先选择保存文件路径")
+            logging.error("未选择文件保存路径")
+            return False
 
-        def task():
+        def task(over_state:list[bool]|None=None):
             self.disable_button_safe(self.btn_generate_setting)
             try:
                 api_key = self.api_key_var.get().strip()
@@ -933,21 +942,27 @@ class NovelGeneratorGUI:
                     temperature=temperature
                 )
                 self.safe_log("✅ 小说设定生成完成。请在 'Novel Settings' 标签页进行查看或编辑。")
+                if over_state is not None:
+                    over_state[0] = True
             except Exception:
                 self.handle_exception("生成小说设定时出错")
+                if over_state is not None:
+                    over_state[0] = False
             finally:
                 self.enable_button_safe(self.btn_generate_setting)
 
-        threading.Thread(target=task, daemon=True).start()
+        threading.Thread(target=task, daemon=True, args=(thread_return,)).start()
+        return True
 
-    def generate_novel_directory_ui(self):
+    def generate_novel_directory_ui(self, thread_return: list[bool] | None = None) -> bool:
         """Step2. 基于已有 Novel_setting.txt 生成 Novel_directory.txt"""
         filepath = self.filepath_var.get().strip()
         if not filepath:
-            messagebox.showwarning("警告", "请先选择保存文件路径")
-            return
+            # messagebox.showwarning("警告", "请先选择保存文件路径")
+            logging.error("未选择文件保存路径")
+            return False
 
-        def task():
+        def task(over_state:list[bool]|None=None):
             self.disable_button_safe(self.btn_generate_directory)
             try:
                 api_key = self.api_key_var.get().strip()
@@ -966,21 +981,27 @@ class NovelGeneratorGUI:
                     temperature=temperature
                 )
                 self.safe_log("✅ 小说目录生成完成。请在 'Novel Directory' 标签页查看或编辑。")
+                if over_state is not None:
+                    over_state[0] = True
             except Exception:
                 self.handle_exception("生成小说目录时出错")
+                if over_state is not None:
+                    over_state[0] = False
             finally:
                 self.enable_button_safe(self.btn_generate_directory)
 
-        threading.Thread(target=task, daemon=True).start()
+        threading.Thread(target=task, daemon=True, args=(thread_return,)).start()
+        return True
 
-    def generate_chapter_draft_ui(self):
+    def generate_chapter_draft_ui(self, thread_return: list[bool] | None = None) -> bool:
         """Step3. 生成当前章节草稿"""
         filepath = self.filepath_var.get().strip()
         if not filepath:
-            messagebox.showwarning("警告", "请先配置保存文件路径。")
-            return
+            # messagebox.showwarning("警告", "请先选择保存文件路径")
+            logging.error("未选择文件保存路径")
+            return False
 
-        def task():
+        def task(over_state:list[bool]|None=None):
             self.disable_button_safe(self.btn_generate_chapter)
             try:
                 api_key = self.api_key_var.get().strip()
@@ -1039,29 +1060,37 @@ class NovelGeneratorGUI:
                 if draft_text:
                     self.safe_log(f"✅ 第{chap_num}章草稿生成完成。请在左侧查看或编辑。")
                     self.master.after(0, lambda: self.show_chapter_in_textbox(draft_text))
+                    if over_state is not None:
+                        over_state[0] = True
                 else:
                     self.safe_log("⚠️ 本章草稿生成失败或无内容。")
+                    if over_state is not None:
+                        over_state[0] = False
 
             except Exception:
                 self.handle_exception("生成章节草稿时出错")
+                if over_state is not None:
+                    over_state[0] = False
             finally:
                 self.enable_button_safe(self.btn_generate_chapter)
 
-        threading.Thread(target=task, daemon=True).start()
+        threading.Thread(target=task, daemon=True, args=(thread_return,)).start()
+        return True
 
     def show_chapter_in_textbox(self, text: str):
         self.chapter_result.delete("0.0", "end")
         self.chapter_result.insert("0.0", text)
         self.chapter_result.see("end")
 
-    def finalize_chapter_ui(self):
+    def finalize_chapter_ui(self, thread_return: list[bool] | None = None) -> bool:
         """Step4. 定稿当前章节：更新全局摘要、角色状态、向量库等"""
         filepath = self.filepath_var.get().strip()
         if not filepath:
-            messagebox.showwarning("警告", "请先配置保存文件路径。")
-            return
+            # messagebox.showwarning("警告", "请先选择保存文件路径")
+            logging.error("未选择文件保存路径")
+            return False
 
-        def task():
+        def task(over_state:list[bool]|None=None):
             self.disable_button_safe(self.btn_finalize_chapter)
             try:
                 api_key = self.api_key_var.get().strip()
@@ -1092,13 +1121,17 @@ class NovelGeneratorGUI:
                 chap_file = os.path.join(filepath, "chapters", f"chapter_{chap_num}.txt")
                 final_text = read_file(chap_file)
                 self.master.after(0, lambda: self.show_chapter_in_textbox(final_text))
-
+                if over_state is not None:
+                    over_state[0] = True
             except Exception:
                 self.handle_exception("定稿章节时出错")
+                if over_state is not None:
+                    over_state[0] = False
             finally:
                 self.enable_button_safe(self.btn_finalize_chapter)
 
-        threading.Thread(target=task, daemon=True).start()
+        threading.Thread(target=task, daemon=True, args=(thread_return,)).start()
+        return True
 
     # ------------------ 一致性审校 ------------------ 
     def do_consistency_check(self):
@@ -1156,7 +1189,9 @@ class NovelGeneratorGUI:
 
         threading.Thread(target=task, daemon=True).start()
 
-    # ------------------ 导入知识库/清空向量库/查看剧情要点 ------------------ 
+
+
+    # ------------------ 导入知识库/清空向量库/查看剧情要点 ------------------
     def import_knowledge_handler(self):
         selected_file = filedialog.askopenfilename(
             title="选择要导入的知识库文件",
@@ -1182,6 +1217,38 @@ class NovelGeneratorGUI:
                     self.enable_button_safe(self.btn_import_knowledge)
 
             threading.Thread(target=task, daemon=True).start()
+    def on_key_gen_handler(self):
+        def task():
+            while not self.do_until_success(self.generate_novel_setting_ui, []):
+                logging.info("设定失败")
+            logging.info("设定成功")
+
+            while not self.do_until_success(self.generate_novel_directory_ui, []):
+                logging.info("目录失败")
+            logging.info("目录成功")
+
+            for i in range(1, self.num_chapters_var.get()+1):
+                self.chapter_num_var.set(i)
+                logging.info(f"生成第{self.chapter_num_var.get()}")
+                while not self.do_until_success(self.generate_chapter_draft_ui, []):
+                    logging.info("草稿失败")
+                logging.info("草稿成功")
+                while not self.do_until_success(self.finalize_chapter_ui, []):
+                    logging.info("定稿失败")
+                logging.info("定稿成功")
+
+        threading.Thread(target=task, daemon=True).start()
+
+
+
+    def do_until_success(self, func, arg):
+        import time
+        res = [0]
+        if func(res):
+            while res[0] == 0:
+                time.sleep(5)
+            return res[0]
+        return False
 
     def clear_vectorstore_handler(self):
         first_confirm = messagebox.askyesno("警告", "确定要清空本地向量库吗？此操作不可恢复！")

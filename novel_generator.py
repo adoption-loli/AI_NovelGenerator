@@ -55,12 +55,13 @@ def remove_think_tags(text: str) -> str:
     """
     return re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
 
-def invoke_with_cleaning(model: ChatOpenAI, prompt: str) -> str:
+def invoke_with_cleaning(model: ChatOpenAI, prompt: str, retry:int|None=100) -> str:
     """
     通用封装：调用模型并移除 <think>...</think> 文本，记录日志后返回
     """
     logging.info(f"[prompt] {prompt.replace('\\n', '\n')}")
     total_request_start_time = datetime.datetime.now()
+    end_mark = "###"
     import time
     model.streaming = True
     time.sleep(1)
@@ -74,7 +75,7 @@ def invoke_with_cleaning(model: ChatOpenAI, prompt: str) -> str:
         # response = model.invoke(prompt)
         from langchain_community.chat_message_histories import ChatMessageHistory
         chat_history = ChatMessageHistory()
-        chat_history.add_user_message(prompt + "\n在末尾请发出###表示你的回答已经结束，末尾不要有###以外的任何多余符号")
+        chat_history.add_user_message(prompt + f"\n在末尾请发出{end_mark}表示你的回答已经结束，末尾不要有{end_mark}以外的任何多余符号")
         msg = ""
         before_len = 0
         request_start_time = datetime.datetime.now()
@@ -88,9 +89,9 @@ def invoke_with_cleaning(model: ChatOpenAI, prompt: str) -> str:
         before_len = len(msg)
         request_spend_time = datetime.datetime.now() - request_start_time
         print(f"\n回答告一段落，本次回答耗时{request_spend_time}")
-        while not msg.strip().endswith("###"):
+        while not msg.strip().endswith(end_mark):
             request_start_time = datetime.datetime.now()
-            chat_history.add_user_message("请接着最后一句话继续。如果最后一句话没有说完，就将最后一句话补全后再继续\n在末尾请发出###表示你的回答已经结束，末尾不要有###以外的任何多余符号")
+            chat_history.add_user_message(f"请接着最后一句话继续。如果最后一句话没有说完，就将最后一句话补全后再继续\n在末尾请发出{end_mark}表示你的回答已经结束，末尾不要有{end_mark}以外的任何多余符号")
             for chunk in model.stream(chat_history.messages):
                 if len(chunk.content) == 0:
                     print("\r 还在思考中，返回空白内容...", end='')
@@ -103,19 +104,23 @@ def invoke_with_cleaning(model: ChatOpenAI, prompt: str) -> str:
             print(f"\n回答告一段落，本次回答耗时{request_spend_time}")
         logging.info(f"\n思考完毕,全文长度{len(msg)}")
         response = AIMessage(content=msg)
+        print('\a')
+        request_spend_time = datetime.datetime.now() - request_start_time
+        logging.info(f"请求耗时{request_spend_time}ms")
+        if not response:
+            logging.warning("No response from model.")
+            return ""
+        cleaned_text = remove_think_tags(response.content)
+        debug_log(prompt, cleaned_text)
+        return cleaned_text.strip()
     except Exception as e:
         total_request_spend_time = datetime.datetime.now() - total_request_start_time
         logging.info(f"请求耗时{total_request_spend_time}ms 请求失败")
-        raise e
-    print('\a')
-    request_spend_time = datetime.datetime.now() - request_start_time
-    logging.info(f"请求耗时{request_spend_time}ms")
-    if not response:
-        logging.warning("No response from model.")
-        return ""
-    cleaned_text = remove_think_tags(response.content)
-    debug_log(prompt, cleaned_text)
-    return cleaned_text.strip()
+        logging.error(traceback.format_exc())
+        logging.error(f"{retry=}")
+        if retry < 0:
+            raise e
+        return invoke_with_cleaning(model, prompt, retry-1)
 
 def debug_log(prompt: str, response_content: str):
     """
