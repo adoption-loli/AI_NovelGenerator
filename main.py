@@ -19,9 +19,9 @@ for handler in logging.root.handlers:
 
 # 自定义一个类，重定向 print 的输出
 class DualOutput:
-    def __init__(self, file_handler):
+    def __init__(self, log_file_handler):
         self.console = sys.stdout  # 控制台输出
-        self.file_handler = file_handler  # logging 的 FileHandler
+        self.file_handler = log_file_handler  # logging 的 FileHandler
 
     def write(self, message):
         # 写入控制台
