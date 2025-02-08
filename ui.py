@@ -594,7 +594,6 @@ class NovelGeneratorGUI:
             wrap="word",
             font=("Microsoft YaHei", 12),
         )
-        self.user_guide_text.insert("1.0", "模仿刘慈欣的相关作品里的文风进行编写，内容要通俗易懂，不要出现太多科学术语")
         self.user_guide_text.grid(row=6, column=1, padx=5, pady=5, sticky="nsew")
 
     # ---- -------------- 其他Tab的构建 ------------------
@@ -868,6 +867,9 @@ class NovelGeneratorGUI:
             # 主题
             self.topic_text.delete("0.0", "end")
             self.topic_text.insert("0.0", cfg.get("topic", ""))
+            # 用户指导
+            self.user_guide_text.insert("1.0",
+                                        cfg.get("user_guide", ""))
 
             self.log("已加载配置。")
         else:
