@@ -1248,6 +1248,7 @@ class NovelGeneratorGUI:
                 logging.info(f"第{i}章线程启动，最大等待时间为20分钟")
                 t.join(timeout=60*20)
                 while not res[0]:
+                    time.sleep(30)
                     logging.info(f"第{i}章线程超时，正在重试，最大等待时间为20分钟")
                     t = threading.Thread(target=self.gen_chapter, daemon=True, args=(i, start_chapter, res))
                     t.start()
