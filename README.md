@@ -1,7 +1,5 @@
 # 📖 自动小说生成工具
 
-> 一款基于大语言模型的多功能小说生成器，助您高效创作逻辑严谨、设定统一的长篇故事
-
 <div align="center">
   
 ✨ **核心功能** ✨
@@ -18,6 +16,8 @@
 
 </div>
 
+> 一款基于大语言模型的多功能小说生成器，助您高效创作逻辑严谨、设定统一的长篇故事
+
 ---
 
 ## 📑 目录导航
@@ -32,7 +32,7 @@
 
 ## 🛠 环境准备
 确保满足以下运行条件：
-- **Python 3.10+** 运行环境
+- **Python 3.9+** 运行环境（推荐3.10-3.12之间）
 - **pip** 包管理工具
 - 有效API密钥：
   - 云端服务：OpenAI / DeepSeek 等
@@ -40,20 +40,53 @@
 
 ---
 
+
+## 📥 安装说明
+1. **下载项目**  
+   - 通过 [GitHub](https://github.com) 下载项目 ZIP 文件，或使用以下命令克隆本项目：
+     ```bash
+     git clone https://github.com/YILING0013/AI_NovelGenerator
+     ```
+
+2. **安装编译工具（可选）**  
+   - 如果对某些包无法正常安装，访问 [Visual Studio Build Tools](https://visualstudio.microsoft.com/zh-hans/visual-cpp-build-tools/) 下载并安装C++编译工具，用于构建部分模块包；
+   - 安装时，默认只包含 MSBuild 工具，需手动勾选左上角列表栏中的 **C++ 桌面开发** 选项。
+
+3. **安装依赖并运行**  
+   - 打开终端，进入项目源文件目录：
+     ```bash
+     cd AI_NovelGenerator
+     ```
+   - 安装项目依赖：
+     ```bash
+     pip install -r requirements.txt
+     ```
+   - 安装完成后，运行主程序：
+     ```bash
+     python main.py
+     ```
+
+>如果缺失部分依赖，后续**手动执行**
+>```bash
+>pip install XXX
+>```
+>进行安装即可
+
 ## 🗂 项目架构
 ```
 novel-generator/
-├── main.py                # 入口文件, 运行 GUI
-├── ui.py                  # 图形界面
-├── novel_generator.py     # 章节生成核心逻辑
-├── consistency_checker.py # 一致性检查, 防止剧情冲突
-|—— chapter_directory_parser.py # 目录解析
-|—— embedding_ollama.py    # Ollama 本地服务的 Embedding 接口
-├── prompt_definitions.py  # 定义 AI 提示词
-├── utils.py               # 常用工具函数, 文件操作
-├── config_manager.py      # 管理配置 (API Key, Base URL)
-├── config.json            # 用户配置文件 (可选)
-└── vectorstore/           # (可选) 本地向量数据库存储
+├── main.py                      # 入口文件, 运行 GUI
+├── ui.py                        # 图形界面
+├── novel_generator.py           # 章节生成核心逻辑
+├── consistency_checker.py       # 一致性检查, 防止剧情冲突
+|—— chapter_directory_parser.py  # 目录解析
+|—— embedding_adapters.py        # Embedding 接口封装
+|—— llm_adapters.py              # LLM 接口封装
+├── prompt_definitions.py        # 定义 AI 提示词
+├── utils.py                     # 常用工具函数, 文件操作
+├── config_manager.py            # 管理配置 (API Key, Base URL)
+├── config.json                  # 用户配置文件 (可选)
+└── vectorstore/                 # (可选) 本地向量数据库存储
 ```
 
 ---
@@ -62,18 +95,22 @@ novel-generator/
 ### 📌 基础配置（config.json）
 ```json
 {
-    "api_key": "sk-XXXXXXXXXXXXXXXXXXXXXXXXXX",
+    "api_key": "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
     "base_url": "https://api.openai.com/v1",
     "interface_format": "OpenAI",
     "model_name": "gpt-4o-mini",
+    "temperature": 0.7,
+    "max_tokens": 4096,
+    "embedding_api_key": "sk-XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+    "embedding_interface_format": "OpenAI",
     "embedding_url": "https://api.openai.com/v1",
     "embedding_model_name": "text-embedding-ada-002",
-    "temperature": 0.70,
+    "embedding_retrieval_k": 4,
     "topic": "星穹铁道主角星穿越到原神提瓦特大陆，拯救提瓦特大陆，并与其中的角色展开爱恨情仇的小说",
     "genre": "玄幻",
-    "num_chapters": 10,
-    "word_number": 2000,
-    "filepath": "C:/Users/Documents/test"
+    "num_chapters": 120,
+    "word_number": 4000,
+    "filepath": "D:/AI_NovelGenerator/filepath"
 }
 ```
 
@@ -84,10 +121,12 @@ novel-generator/
    - `interface_format`: 接口模式
    - `model_name`: 主生成模型名称（如gpt-4, claude-3等）
    - `temperature`: 创意度参数（0-1，越高越有创造性）
+   - `max_tokens`: 模型最大回复长度
 
 2. **Embedding模型配置**
    - `embedding_model_name`: 模型名称（如Ollama的nomic-embed-text）
    - `embedding_url`: 服务地址
+   - `embedding_retrieval_k`: 
 
 3. **小说参数配置**
    - `topic`: 核心故事主题
@@ -173,21 +212,13 @@ pyinstaller main.spec
 ---
 
 ## ❓ 疑难解答
-### Q1: 如何验证Embedding服务是否正常？
-```python
-# 测试脚本 test_embedding.py
-from core.embedding import get_embedder
+### Q1: Expecting value: line 1 column 1 (char 0)
 
-embedder = get_embedder()
-test_text = "这是一个测试句子"
-vector = embedder.embed_query(test_text)
-print(f"向量维度: {len(vector)}")  # 正常应输出预设维度数
-```
+该问题大概率由于API未正确响应造成，也许响应了一个html？其它内容，导致出现该报错；
 
-### Q2: 本地Embedding响应缓慢怎么办？
-- 检查模型是否已下载到本地
-- 尝试较小尺寸的Embedding模型
-- 增加Ollama服务的运行内存
+
+### Q2: HTTP/1.1 504 Gateway Timeout？
+确认接口是否稳定；
 
 ### Q3: 如何切换不同的Embedding提供商？
 在GUI界面中对应输入即可。

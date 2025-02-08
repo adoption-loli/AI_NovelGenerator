@@ -14,7 +14,8 @@ hiddenimports = ['typing_extensions',
                  'pydantic',
                  'pydantic.deprecated.decorator',
                  'tiktoken_ext.openai_public',
-                 'tiktoken_ext'
+                 'tiktoken_ext',
+                 'chromadb.utils.embedding_functions.onnx_mini_lm_l6_v2'
                  ]
 
 tmp_ret = collect_all('chromadb')
@@ -44,7 +45,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='AI_NovelGenerator_V1.3.0',
+    name='AI_NovelGenerator_V1.4.1',
     debug=True,
     bootloader_ignore_signals=False,
     strip=False,
@@ -65,5 +66,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='AI_NovelGenerator_V1.3.0'
+    name='AI_NovelGenerator_V1.4.1'
 )

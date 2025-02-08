@@ -6,6 +6,7 @@
 /__pycache__
 /markdown
 /vectorstore
+/example
 config.json
 /logs
 last_chapter.txt

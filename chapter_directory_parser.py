@@ -1,50 +1,132 @@
-# chapter_directory_parser.py
+# chapter_blueprint_parser.py
 # -*- coding: utf-8 -*-
 import re
 
-def get_chapter_info_from_directory(novel_directory_content: str, chapter_number: int):
+def parse_chapter_blueprint(blueprint_text: str):
     """
-    从给定的 novel_directory_content 文本中，解析 “第X章” 行，并提取本章的标题和可能的简述。
-    返回一个 dict: {
-       "chapter_title": <字符串>,
-       "chapter_brief": <字符串> (若没有则为空)
+    解析整份章节蓝图文本，返回一个列表，每个元素是一个 dict：
+    {
+      "chapter_number": int,
+      "chapter_title": str,
+      "chapter_role": str,       # 本章定位
+      "chapter_purpose": str,    # 核心作用
+      "suspense_level": str,     # 悬念密度
+      "foreshadowing": str,      # 伏笔操作
+      "plot_twist_level": str,   # 认知颠覆
+      "chapter_summary": str     # 本章简述
     }
-    注意：目录文本示例格式:
-        第1章 ：潮起
-        第2章 ：阴影浮现 - 主要角色冲突爆发
-        ...
-    也可能没有简述，只有一个简单标题。
     """
 
-    # 将文本逐行拆分
-    lines = novel_directory_content.splitlines()
+    # 先按空行进行分块，以免多章之间混淆
+    chunks = re.split(r'\n\s*\n', blueprint_text.strip())
+    results = []
 
-    # 章节匹配：形如 “第5章 ：xxx” or “第5章: xxx” or “第5章 xxx”
-    pattern = re.compile(r'^第\s*(\d+)\s*章\s*[:：]?\s*(.*)$')
+    # 兼容是否使用方括号包裹章节标题
+    # 例如：
+    #   第1章 - 紫极光下的预兆
+    # 或
+    #   第1章 - [紫极光下的预兆]
+    chapter_number_pattern = re.compile(r'^第\s*(\d+)\s*章\s*-\s*\[?(.*?)\]?$')
 
-    for line in lines:
-        match = pattern.match(line.strip())
-        if match:
-            chap_num = int(match.group(1))
-            if chap_num == chapter_number:
-                # group(2) 可能是标题及简述的混合
-                full_title = match.group(2).strip()
-                # 这里假设用 '-' 进一步区分“标题 - 简述”，也可能用户没写“ - ”
-                if ' - ' in full_title:
-                    # 根据你的目录格式自由处理
-                    parts = full_title.split(' - ', 1)
-                    return {
-                        "chapter_title": parts[0].strip(),
-                        "chapter_brief": parts[1].strip()
-                    }
-                else:
-                    return {
-                        "chapter_title": full_title,
-                        "chapter_brief": ""
-                    }
+    role_pattern     = re.compile(r'^本章定位：\s*\[?(.*)\]?$')
+    purpose_pattern  = re.compile(r'^核心作用：\s*\[?(.*)\]?$')
+    suspense_pattern = re.compile(r'^悬念密度：\s*\[?(.*)\]?$')
+    foreshadow_pattern = re.compile(r'^伏笔操作：\s*\[?(.*)\]?$')
+    twist_pattern       = re.compile(r'^认知颠覆：\s*\[?(.*)\]?$')
+    summary_pattern = re.compile(r'^本章简述：\s*\[?(.*)\]?$')
 
-    # 如果没有匹配到，返回默认
+    for chunk in chunks:
+        lines = chunk.strip().splitlines()
+        if not lines:
+            continue
+
+        chapter_number   = None
+        chapter_title    = ""
+        chapter_role     = ""
+        chapter_purpose  = ""
+        suspense_level   = ""
+        foreshadowing    = ""
+        plot_twist_level = ""
+        chapter_summary  = ""
+
+        # 先匹配第一行（或前几行），找到章号和标题
+        header_match = chapter_number_pattern.match(lines[0].strip())
+        if not header_match:
+            # 不符合“第X章 - 标题”的格式，跳过
+            continue
+
+        chapter_number = int(header_match.group(1))
+        chapter_title  = header_match.group(2).strip()
+
+        # 从后面的行匹配其他字段
+        for line in lines[1:]:
+            line_stripped = line.strip()
+            if not line_stripped:
+                continue
+
+            m_role = role_pattern.match(line_stripped)
+            if m_role:
+                chapter_role = m_role.group(1).strip()
+                continue
+
+            m_purpose = purpose_pattern.match(line_stripped)
+            if m_purpose:
+                chapter_purpose = m_purpose.group(1).strip()
+                continue
+
+            m_suspense = suspense_pattern.match(line_stripped)
+            if m_suspense:
+                suspense_level = m_suspense.group(1).strip()
+                continue
+
+            m_foreshadow = foreshadow_pattern.match(line_stripped)
+            if m_foreshadow:
+                foreshadowing = m_foreshadow.group(1).strip()
+                continue
+
+            m_twist = twist_pattern.match(line_stripped)
+            if m_twist:
+                plot_twist_level = m_twist.group(1).strip()
+                continue
+
+            m_summary = summary_pattern.match(line_stripped)
+            if m_summary:
+                chapter_summary = m_summary.group(1).strip()
+                continue
+
+        results.append({
+            "chapter_number": chapter_number,
+            "chapter_title": chapter_title,
+            "chapter_role": chapter_role,
+            "chapter_purpose": chapter_purpose,
+            "suspense_level": suspense_level,
+            "foreshadowing": foreshadowing,
+            "plot_twist_level": plot_twist_level,
+            "chapter_summary": chapter_summary
+        })
+
+    # 按照 chapter_number 排序后返回
+    results.sort(key=lambda x: x["chapter_number"])
+    return results
+
+
+def get_chapter_info_from_blueprint(blueprint_text: str, target_chapter_number: int):
+    """
+    在已经加载好的章节蓝图文本中，找到对应章号的结构化信息，返回一个 dict。
+    若找不到则返回一个默认的结构。
+    """
+    all_chapters = parse_chapter_blueprint(blueprint_text)
+    for ch in all_chapters:
+        if ch["chapter_number"] == target_chapter_number:
+            return ch
+    # 默认返回
     return {
-        "chapter_title": f"第{chapter_number}章",
-        "chapter_brief": ""
+        "chapter_number": target_chapter_number,
+        "chapter_title": f"第{target_chapter_number}章",
+        "chapter_role": "",
+        "chapter_purpose": "",
+        "suspense_level": "",
+        "foreshadowing": "",
+        "plot_twist_level": "",
+        "chapter_summary": ""
     }
