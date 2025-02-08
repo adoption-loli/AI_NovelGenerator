@@ -1,5 +1,6 @@
 # novel_generator.py
 # -*- coding: utf-8 -*-
+import asyncio
 import os
 import logging
 import re
@@ -8,6 +9,7 @@ import re
 from typing import List, Optional
 import datetime, time
 
+import async_timeout
 from langchain_core.messages import BaseMessage, AIMessage
 # langchain 相关
 from langchain_openai import ChatOpenAI
@@ -59,6 +61,31 @@ def remove_think_tags(text: str) -> str:
     return re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
 
 
+async def async_stream_collector(chat: ChatOpenAI, chat_history: ChatMessageHistory, timeout_sec: int) -> str | Exception:
+    """
+    异步流式收集器
+    :param chat: 模型
+    :param chat_history: 聊天历史
+    :param timeout_sec: 总超时时间
+    :return: 完整结果字符串
+    """
+    result = []
+
+    try:
+        async with async_timeout.timeout(timeout_sec):
+            async for chunk in chat.astream(chat_history.messages):
+                if len(chunk.content) == 0:
+                    print('\r 思索中...', end='')
+                    continue
+                result.append(chunk.content)
+                print(chunk.content, end='')
+        return "".join(result)
+
+    except Exception as e:
+        logging.info("响应超时")
+        return e
+
+
 def invoke_with_cleaning(model: ChatOpenAI, prompt: str, retry: int | None = 100) -> str:
     """
     通用封装：调用模型并移除 <think>...</think> 文本，记录日志后返回
@@ -83,31 +110,39 @@ def invoke_with_cleaning(model: ChatOpenAI, prompt: str, retry: int | None = 100
         msg = ""
         before_len = 0
         request_start_time = datetime.datetime.now()
-        for chunk in model.stream(chat_history.messages):
-            if len(chunk.content) == 0:
-                print("\r 还在思考中，返回空白内容...", end='')
-                continue
-            print(f"{chunk.content}", end='')
-            msg += chunk.content
-        chat_history.add_ai_message(msg[before_len:])
-        before_len = len(msg)
+        # async with async_timeout.timeout(20*60):
+        #     async for chunk in model.astream(chat_history.messages):
+        #         if len(chunk.content) == 0:
+        #             print("\r 还在思考中，返回空白内容...", end='')
+        #             continue
+        #         print(f"{chunk.content}", end='')
+        #         msg += chunk.content
+        resp = asyncio.run(async_stream_collector(model, chat_history, 20*60))
+        if isinstance(resp, Exception):
+            raise resp
+        msg += resp
+        chat_history.add_ai_message(resp)
         request_spend_time = datetime.datetime.now() - request_start_time
         print(f"\n回答告一段落，本次回答耗时{request_spend_time}")
         while not msg.strip().endswith(end_mark):
             request_start_time = datetime.datetime.now()
             chat_history.add_user_message(
                 f"请接着最后一句话继续。如果最后一句话没有说完，就将最后一句话补全后再继续,接续处直接写正文即可，不要有多余内容\n在末尾请发出{end_mark}表示你的回答已经结束，末尾不要有{end_mark}以外的任何多余符号")
-            think_log_flag = False
-            for chunk in model.stream(chat_history.messages):
-                if len(chunk.content) == 0:
-                    if not think_log_flag:
-                        print("还在思考中，返回空白内容...")
-                        think_log_flag = True
-                    continue
-                print(f"{chunk.content}", end='')
-                msg += chunk.content
-            chat_history.add_ai_message(msg[before_len:])
-            before_len = len(msg)
+            # think_log_flag = False
+            # async with async_timeout.timeout(20 * 60):
+            #     async for chunk in model.astream(chat_history.messages):
+            #         if len(chunk.content) == 0:
+            #             if not think_log_flag:
+            #                 print("还在思考中，返回空白内容...")
+            #                 think_log_flag = True
+            #             continue
+            #         print(f"{chunk.content}", end='')
+            #         msg += chunk.content
+            resp = asyncio.run(async_stream_collector(model, chat_history, 20 * 60))
+            if isinstance(resp, Exception):
+                raise resp
+            msg += resp
+            chat_history.add_ai_message(resp)
             request_spend_time = datetime.datetime.now() - request_start_time
             print(f"\n回答告一段落，本次回答耗时{request_spend_time}")
         logging.info(f"\n思考完毕,全文长度{len(msg)}")

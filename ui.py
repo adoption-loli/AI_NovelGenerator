@@ -4,6 +4,8 @@
 import logging
 import os
 import threading
+import time
+
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
 import traceback
@@ -1246,37 +1248,25 @@ class NovelGeneratorGUI:
                 logging.info("每个环节之间休息30s...")
                 time.sleep(30)
             for i in range(start_chapter, self.num_chapters_var.get() + 1):
-                res = [False]
-                t = threading.Thread(target=self.gen_chapter, daemon=True, args=(i, start_chapter, res))
-                t.start()
-                logging.info(f"第{i}章线程启动，最大等待时间为20分钟")
-                t.join(timeout=60 * 20)
-                while not res[0]:
-                    time.sleep(30)
-                    logging.info(f"第{i}章线程超时，正在重试，最大等待时间为20分钟")
-                    t = threading.Thread(target=self.gen_chapter, daemon=True, args=(i, start_chapter, res))
-                    t.start()
-                    t.join(timeout=60 * 20)
-
+                self.gen_chapter(i, start_chapter)
         threading.Thread(target=task, daemon=True).start()
 
-    def gen_chapter(self, i, start_chapter, res: list):
-        import time
+    def gen_chapter(self, i, start_chapter) -> bool:
         self.chapter_num_var.set(i)
         logging.info(f"生成第{self.chapter_num_var.get()}")
         while not self.do_until_success(self.generate_chapter_draft_ui, []):
             logging.info("草稿失败")
-            return
+            return False
         logging.info("草稿成功")
         while not self.do_until_success(self.finalize_chapter_ui, []):
             logging.info("定稿失败")
-            return
+            return False
         logging.info("定稿成功")
         with open("last_chapter.txt", 'w', encoding='utf-8') as f:
             f.write(str(start_chapter + 1))
         logging.info("每章休息1分钟...")
-        res[0] = True
         time.sleep(60)
+        return True
 
     def do_until_success(self, func, arg):
         import time
