@@ -1265,7 +1265,7 @@ class NovelGeneratorGUI:
             return False
         logging.info("定稿成功")
         with open("last_chapter.txt", 'w', encoding='utf-8') as f:
-            f.write(str(start_chapter + 1))
+            f.write(str(i + 1))
         logging.info("每章休息1分钟...")
         time.sleep(60)
         return True
