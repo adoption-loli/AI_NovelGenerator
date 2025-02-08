@@ -70,7 +70,7 @@ async def async_stream_collector(chat: ChatOpenAI, chat_history: ChatMessageHist
     :return: 完整结果字符串
     """
     result = []
-
+    logging.info(f"{chat.model_dump_json()}")
     try:
         async with async_timeout.timeout(timeout_sec):
             async for chunk in chat.astream(chat_history.messages):
