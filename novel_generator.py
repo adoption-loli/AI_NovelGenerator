@@ -92,9 +92,12 @@ def invoke_with_cleaning(model: ChatOpenAI, prompt: str, retry:int|None=100) -> 
         while not msg.strip().endswith(end_mark):
             request_start_time = datetime.datetime.now()
             chat_history.add_user_message(f"请接着最后一句话继续。如果最后一句话没有说完，就将最后一句话补全后再继续,接续处直接写正文即可，不要有多余内容\n在末尾请发出{end_mark}表示你的回答已经结束，末尾不要有{end_mark}以外的任何多余符号")
+            think_log_flag = False
             for chunk in model.stream(chat_history.messages):
                 if len(chunk.content) == 0:
-                    print("\r 还在思考中，返回空白内容...", end='')
+                    if not think_log_flag:
+                        print("还在思考中，返回空白内容...")
+                        think_log_flag = True
                     continue
                 print(f"{chunk.content}", end='')
                 msg += chunk.content
