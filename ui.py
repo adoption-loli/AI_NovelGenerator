@@ -589,7 +589,7 @@ class NovelGeneratorGUI:
             wrap="word",
             font=("Microsoft YaHei", 12),
         )
-        self.user_guide_text.insert("1.0", "模仿刘慈欣的相关作品里的文风进行编写")
+        self.user_guide_text.insert("1.0", "模仿刘慈欣的相关作品里的文风进行编写，内容要通俗易懂，不要出现太多科学术语")
         self.user_guide_text.grid(row=6, column=1, padx=5, pady=5, sticky="nsew")
 
     # ---- -------------- 其他Tab的构建 ------------------
@@ -1219,26 +1219,58 @@ class NovelGeneratorGUI:
             threading.Thread(target=task, daemon=True).start()
     def on_key_gen_handler(self):
         def task():
-            while not self.do_until_success(self.generate_novel_setting_ui, []):
-                logging.info("设定失败")
-            logging.info("设定成功")
-
-            while not self.do_until_success(self.generate_novel_directory_ui, []):
-                logging.info("目录失败")
-            logging.info("目录成功")
-
-            for i in range(1, self.num_chapters_var.get()+1):
-                self.chapter_num_var.set(i)
-                logging.info(f"生成第{self.chapter_num_var.get()}")
-                while not self.do_until_success(self.generate_chapter_draft_ui, []):
-                    logging.info("草稿失败")
-                logging.info("草稿成功")
-                while not self.do_until_success(self.finalize_chapter_ui, []):
-                    logging.info("定稿失败")
-                logging.info("定稿成功")
-
+            import time
+            if not os.path.exists("last_chapter.txt"):
+                with open("last_chapter.txt", 'w', encoding='utf-8') as f:
+                    pass
+            with open("last_chapter.txt", 'r', encoding='utf-8') as f:
+                data = f.read()
+            logging.info(f"读取到历史记录{data}")
+            if len(data) > 0:
+                start_chapter = int(data)
+            else:
+                start_chapter = 1
+            if start_chapter == 1:
+                while not self.do_until_success(self.generate_novel_setting_ui, []):
+                    logging.info("设定失败")
+                logging.info("设定成功")
+                logging.info("每个环节之间休息30s...")
+                time.sleep(30)
+                while not self.do_until_success(self.generate_novel_directory_ui, []):
+                    logging.info("目录失败")
+                logging.info("目录成功")
+                logging.info("每个环节之间休息30s...")
+                time.sleep(30)
+            for i in range(start_chapter, self.num_chapters_var.get()+1):
+                res = [False]
+                t = threading.Thread(target=self.gen_chapter, daemon=True, args=(i, start_chapter, res))
+                t.start()
+                logging.info(f"第{i}章线程启动，最大等待时间为20分钟")
+                t.join(timeout=60*20)
+                while not res[0]:
+                    logging.info(f"第{i}章线程超时，正在重试，最大等待时间为20分钟")
+                    t = threading.Thread(target=self.gen_chapter, daemon=True, args=(i, start_chapter, res))
+                    t.start()
+                    t.join(timeout=60 * 20)
         threading.Thread(target=task, daemon=True).start()
 
+    def gen_chapter(self, i, start_chapter, res: list):
+        import time
+        self.chapter_num_var.set(i)
+        logging.info(f"生成第{self.chapter_num_var.get()}")
+        while not self.do_until_success(self.generate_chapter_draft_ui, []):
+            logging.info("草稿失败")
+            return
+        logging.info("草稿成功")
+        while not self.do_until_success(self.finalize_chapter_ui, []):
+            logging.info("定稿失败")
+            return
+        logging.info("定稿成功")
+        with open("last_chapter.txt", 'w', encoding='utf-8') as f:
+            f.write(str(start_chapter + 1))
+        logging.info("每章休息1分钟...")
+        res[0] = True
+        time.sleep(60)
 
 
     def do_until_success(self, func, arg):
