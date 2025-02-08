@@ -4,8 +4,9 @@ import os
 import logging
 import re
 import traceback
+import re
 from typing import List, Optional
-import datetime
+import datetime, time
 
 from langchain_core.messages import BaseMessage, AIMessage
 # langchain 相关
@@ -42,6 +43,8 @@ from embedding_ollama import OllamaEmbeddings
 
 # 用于目录解析章节标题/简介
 from chapter_directory_parser import get_chapter_info_from_directory
+from langchain_community.chat_message_histories import ChatMessageHistory
+import shutil
 
 
 # ============ 日志配置 ============
@@ -63,7 +66,6 @@ def invoke_with_cleaning(model: ChatOpenAI, prompt: str, retry: int | None = 100
     logging.info(f"[prompt] {prompt.replace('\\n', '\n')}")
     total_request_start_time = datetime.datetime.now()
     end_mark = "###"
-    import time
     model.streaming = True
     time.sleep(1)
     # 先礼后兵 浪费钱
@@ -74,7 +76,7 @@ def invoke_with_cleaning(model: ChatOpenAI, prompt: str, retry: int | None = 100
     #     logging.info(f"[return msg] {chunk.content}")
     try:
         # response = model.invoke(prompt)
-        from langchain_community.chat_message_histories import ChatMessageHistory
+
         chat_history = ChatMessageHistory()
         chat_history.add_user_message(
             prompt + f"\n在末尾请发出{end_mark}表示你的回答已经结束，末尾不要有{end_mark}以外的任何多余符号")
@@ -153,7 +155,7 @@ def is_using_ml_studio_api(interface_format: str, base_url: str) -> bool:
 
 
 # ============ 帮助函数：自动检查 & 补充 /v1 ============
-import re
+
 
 
 def ensure_openai_base_url_has_v1(url: str) -> str:
@@ -214,7 +216,7 @@ def clear_vector_store():
     清空本地向量库（删除 vectorstore 文件夹内的所有内容）
     """
     if os.path.exists(VECTOR_STORE_DIR):
-        import shutil
+
         try:
             for filename in os.listdir(VECTOR_STORE_DIR):
                 file_path = os.path.join(VECTOR_STORE_DIR, filename)
