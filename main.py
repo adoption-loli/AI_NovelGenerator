@@ -10,7 +10,7 @@ log_format = '[%(asctime)s.%(msecs)03d %(filename)s %(lineno)d] %(message)s'
 date_format = '%Y-%m-%d %H:%M:%S'
 logging.basicConfig(level=logging.DEBUG, format=log_format, datefmt=date_format,
                     handlers=[logging.StreamHandler(),
-                              RotatingFileHandler('logs/log_file.log', maxBytes=16384, encoding='utf-8')])
+                              RotatingFileHandler('logs/log_file.log', maxBytes=16384*64, encoding='utf-8')])
 # 获取配置中的 RotatingFileHandler
 rotating_file_handler = None
 for handler in logging.root.handlers:
@@ -22,7 +22,7 @@ for handler in logging.root.handlers:
 # 自定义一个类，重定向 print 的输出
 # 重定向 print 输出的类
 class DualOutput:
-    def __init__(self, file_handler):
+    def __init__(self, file_handler: RotatingFileHandler):
         self.console = sys.stdout  # 原始控制台输出
         self.file_handler = file_handler  # 日志文件处理器
 
@@ -34,9 +34,18 @@ class DualOutput:
         if '\r' not in message and message.strip() != '':
             # 使用线程锁确保写入安全
             with self.file_handler.lock:
-                self.file_handler.stream.write(message)
-                self.file_handler.stream.flush()
-
+                record = logging.LogRecord(
+                    name=__name__,
+                    level=logging.INFO,
+                    pathname=__file__,
+                    lineno=1,
+                    msg=message,
+                    args=None,
+                    exc_info=None
+                )
+                if self.file_handler.shouldRollover(record):  # 触发轮换逻辑
+                    self.file_handler.doRollover()
+                self.file_handler.emit(record)
     def flush(self):
         # 同步刷新控制台和文件的缓冲区
         self.console.flush()
