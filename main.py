@@ -15,6 +15,8 @@ for handler in logging.root.handlers:
     if isinstance(handler, logging.FileHandler):
         file_handler = handler
         break
+
+
 # 自定义一个类，重定向 print 的输出
 class DualOutput:
     def __init__(self, file_handler):
@@ -33,9 +35,11 @@ class DualOutput:
         self.console.flush()
         self.file_handler.stream.flush()
 
+
 # 将 sys.stdout 重定向到自定义的 DualOutput 类
 if file_handler:
     sys.stdout = DualOutput(file_handler)
+
 
 def main():
     logging.info("程序启动...")
@@ -46,6 +50,7 @@ def main():
     date_format = '%Y-%m-%d %H:%M:%S'
     logging.basicConfig(level=logging.DEBUG, format=log_format, datefmt=date_format)
     root.mainloop()
+
 
 if __name__ == "__main__":
     main()

@@ -55,7 +55,8 @@ def remove_think_tags(text: str) -> str:
     """
     return re.sub(r'<think>.*?</think>', '', text, flags=re.DOTALL)
 
-def invoke_with_cleaning(model: ChatOpenAI, prompt: str, retry:int|None=100) -> str:
+
+def invoke_with_cleaning(model: ChatOpenAI, prompt: str, retry: int | None = 100) -> str:
     """
     通用封装：调用模型并移除 <think>...</think> 文本，记录日志后返回
     """
@@ -75,7 +76,8 @@ def invoke_with_cleaning(model: ChatOpenAI, prompt: str, retry:int|None=100) -> 
         # response = model.invoke(prompt)
         from langchain_community.chat_message_histories import ChatMessageHistory
         chat_history = ChatMessageHistory()
-        chat_history.add_user_message(prompt + f"\n在末尾请发出{end_mark}表示你的回答已经结束，末尾不要有{end_mark}以外的任何多余符号")
+        chat_history.add_user_message(
+            prompt + f"\n在末尾请发出{end_mark}表示你的回答已经结束，末尾不要有{end_mark}以外的任何多余符号")
         msg = ""
         before_len = 0
         request_start_time = datetime.datetime.now()
@@ -91,7 +93,8 @@ def invoke_with_cleaning(model: ChatOpenAI, prompt: str, retry:int|None=100) -> 
         print(f"\n回答告一段落，本次回答耗时{request_spend_time}")
         while not msg.strip().endswith(end_mark):
             request_start_time = datetime.datetime.now()
-            chat_history.add_user_message(f"请接着最后一句话继续。如果最后一句话没有说完，就将最后一句话补全后再继续,接续处直接写正文即可，不要有多余内容\n在末尾请发出{end_mark}表示你的回答已经结束，末尾不要有{end_mark}以外的任何多余符号")
+            chat_history.add_user_message(
+                f"请接着最后一句话继续。如果最后一句话没有说完，就将最后一句话补全后再继续,接续处直接写正文即可，不要有多余内容\n在末尾请发出{end_mark}表示你的回答已经结束，末尾不要有{end_mark}以外的任何多余符号")
             think_log_flag = False
             for chunk in model.stream(chat_history.messages):
                 if len(chunk.content) == 0:
@@ -123,7 +126,8 @@ def invoke_with_cleaning(model: ChatOpenAI, prompt: str, retry:int|None=100) -> 
         logging.error(f"{retry=}")
         if retry < 0:
             raise e
-        return invoke_with_cleaning(model, prompt, retry-1)
+        return invoke_with_cleaning(model, prompt, retry - 1)
+
 
 def debug_log(prompt: str, response_content: str):
     """
@@ -140,6 +144,7 @@ def is_using_ollama_api(interface_format: str, base_url: str) -> bool:
     """
     return interface_format.lower() == "ollama"
 
+
 def is_using_ml_studio_api(interface_format: str, base_url: str) -> bool:
     """
     如果用户在下拉里选择了 ML Studio
@@ -149,6 +154,7 @@ def is_using_ml_studio_api(interface_format: str, base_url: str) -> bool:
 
 # ============ 帮助函数：自动检查 & 补充 /v1 ============
 import re
+
 
 def ensure_openai_base_url_has_v1(url: str) -> str:
     """
@@ -167,11 +173,11 @@ def ensure_openai_base_url_has_v1(url: str) -> str:
 
 # ============ 创建 Embeddings 对象 ============
 def create_embeddings_object(
-    api_key: str,
-    base_url: str,
-    embed_url: str,
-    interface_format: str,
-    embedding_model_name: str
+        api_key: str,
+        base_url: str,
+        embed_url: str,
+        interface_format: str,
+        embedding_model_name: str
 ):
     """
     根据用户在UI中配置的参数，返回对应的 embeddings 对象。
@@ -202,6 +208,7 @@ VECTOR_STORE_DIR = os.path.join(os.getcwd(), "vectorstore")
 if not os.path.exists(VECTOR_STORE_DIR):
     os.makedirs(VECTOR_STORE_DIR)
 
+
 def clear_vector_store():
     """
     清空本地向量库（删除 vectorstore 文件夹内的所有内容）
@@ -223,12 +230,12 @@ def clear_vector_store():
 
 
 def init_vector_store(
-    api_key: str,
-    base_url: str,
-    interface_format: str,
-    embedding_model_name: str,
-    texts: List[str],
-    embedding_base_url: str = ""
+        api_key: str,
+        base_url: str,
+        interface_format: str,
+        embedding_model_name: str,
+        texts: List[str],
+        embedding_base_url: str = ""
 ) -> Chroma:
     """
     初始化并返回一个Chroma向量库，将传入的文本进行嵌入并保存到本地目录。
@@ -252,11 +259,11 @@ def init_vector_store(
 
 
 def load_vector_store(
-    api_key: str,
-    base_url: str,
-    interface_format: str,
-    embedding_model_name: str,
-    embedding_base_url: str = ""
+        api_key: str,
+        base_url: str,
+        interface_format: str,
+        embedding_model_name: str,
+        embedding_base_url: str = ""
 ) -> Optional[Chroma]:
     """
     读取已存在的向量库。若不存在则返回 None。
@@ -277,12 +284,12 @@ def load_vector_store(
 
 
 def update_vector_store(
-    api_key: str,
-    base_url: str,
-    new_chapter: str,
-    interface_format: str,
-    embedding_model_name: str,
-    embedding_base_url: str = ""
+        api_key: str,
+        base_url: str,
+        new_chapter: str,
+        interface_format: str,
+        embedding_model_name: str,
+        embedding_base_url: str = ""
 ) -> None:
     """
     将最新章节文本插入到向量库里，用于后续检索参考。若库不存在则初始化。
@@ -314,13 +321,13 @@ def update_vector_store(
 
 
 def get_relevant_context_from_vector_store(
-    api_key: str,
-    base_url: str,
-    query: str,
-    interface_format: str,
-    embedding_model_name: str,
-    embedding_base_url: str = "",
-    k: int = 2
+        api_key: str,
+        base_url: str,
+        query: str,
+        interface_format: str,
+        embedding_model_name: str,
+        embedding_base_url: str = "",
+        k: int = 2
 ) -> str:
     """
     从向量库中检索与 query 最相关的 k 条文本，拼接后返回。
@@ -348,15 +355,15 @@ def get_relevant_context_from_vector_store(
 
 # ============ 1. 独立：生成小说“设定” (Novel_setting.txt) ============
 def Novel_setting_generate(
-    api_key: str,
-    base_url: str,
-    llm_model: str,
-    topic: str,
-    genre: str,
-    number_of_chapters: int,
-    word_number: int,
-    filepath: str,
-    temperature: float = 0.7
+        api_key: str,
+        base_url: str,
+        llm_model: str,
+        topic: str,
+        genre: str,
+        number_of_chapters: int,
+        word_number: int,
+        filepath: str,
+        temperature: float = 0.7
 ) -> None:
     """
     分步生成 Novel_setting.txt (含世界观、角色信息、暗线等)
@@ -414,12 +421,12 @@ def Novel_setting_generate(
 
 # ============ 2. 独立：基于已有设定，生成小说目录 (Novel_directory.txt) ============
 def Novel_directory_generate(
-    api_key: str,
-    base_url: str,
-    llm_model: str,
-    number_of_chapters: int,
-    filepath: str,
-    temperature: float = 0.7
+        api_key: str,
+        base_url: str,
+        llm_model: str,
+        number_of_chapters: int,
+        filepath: str,
+        temperature: float = 0.7
 ) -> None:
     """
     基于先前已经生成并保存的 Novel_setting.txt，来生成 Novel_directory.txt
@@ -479,12 +486,13 @@ def get_last_n_chapters_text(chapters_dir: str, current_chapter_num: int, n: int
         texts = [''] * (n - len(texts)) + texts
     return texts
 
+
 def summarize_recent_chapters(
-    llm_model: str,
-    api_key: str,
-    base_url: str,
-    temperature: float,
-    chapters_text_list: List[str]
+        llm_model: str,
+        api_key: str,
+        base_url: str,
+        temperature: float,
+        chapters_text_list: List[str]
 ) -> str:
     """
     将最近几章文本拼接，通过模型生成相对简要的“短期内容摘要”。
@@ -528,13 +536,14 @@ PLOT_ARCS_PROMPT = """\
 最终输出更新后的剧情要点列表，以帮助后续保持故事整体的一致性和悬念延续。
 """
 
+
 def update_plot_arcs(
-    chapter_text: str,
-    old_plot_arcs: str,
-    api_key: str,
-    base_url: str,
-    model_name: str,
-    temperature: float
+        chapter_text: str,
+        old_plot_arcs: str,
+        api_key: str,
+        base_url: str,
+        model_name: str,
+        temperature: float
 ) -> str:
     model = ChatOpenAI(
         model=model_name,
@@ -557,22 +566,22 @@ def update_plot_arcs(
 
 # ============ 生成章节草稿 ============
 def generate_chapter_draft(
-    novel_settings: str,
-    global_summary: str,
-    character_state: str,
-    recent_chapters_summary: str,
-    user_guidance: str,
-    api_key: str,
-    base_url: str,
-    model_name: str,
-    novel_number: int,
-    word_number: int,
-    temperature: float,
-    novel_novel_directory: str,
-    filepath: str,
-    interface_format: str,
-    embedding_model_name: str,
-    embedding_base_url: str
+        novel_settings: str,
+        global_summary: str,
+        character_state: str,
+        recent_chapters_summary: str,
+        user_guidance: str,
+        api_key: str,
+        base_url: str,
+        model_name: str,
+        novel_number: int,
+        word_number: int,
+        temperature: float,
+        novel_novel_directory: str,
+        filepath: str,
+        interface_format: str,
+        embedding_model_name: str,
+        embedding_base_url: str
 ) -> str:
     """
     生成当前章节的草稿，不更新全局摘要/角色状态/向量库。
@@ -663,15 +672,15 @@ def generate_chapter_draft(
 
 # ============ 定稿章节 ============
 def finalize_chapter(
-    novel_number: int,
-    word_number: int,
-    api_key: str,
-    base_url: str,
-    interface_format: str,
-    embedding_model_name: str,
-    model_name: str,
-    temperature: float,
-    filepath: str
+        novel_number: int,
+        word_number: int,
+        api_key: str,
+        base_url: str,
+        interface_format: str,
+        embedding_model_name: str,
+        model_name: str,
+        temperature: float,
+        filepath: str
 ):
     """
     对当前章节进行定稿：
@@ -772,12 +781,12 @@ def finalize_chapter(
 
 
 def enrich_chapter_text(
-    chapter_text: str,
-    word_number: int,
-    api_key: str,
-    base_url: str,
-    model_name: str,
-    temperature: float
+        chapter_text: str,
+        word_number: int,
+        api_key: str,
+        base_url: str,
+        model_name: str,
+        temperature: float
 ) -> str:
     """
     当章节篇幅不足时，调用此函数对章节文本进行二次扩写。
@@ -800,12 +809,12 @@ def enrich_chapter_text(
 
 # ============ 导入外部知识文本 ============
 def import_knowledge_file(
-    api_key: str,
-    base_url: str,
-    interface_format: str,
-    embedding_model_name: str,
-    file_path: str,
-    embedding_base_url: str = ""
+        api_key: str,
+        base_url: str,
+        interface_format: str,
+        embedding_model_name: str,
+        file_path: str,
+        embedding_base_url: str = ""
 ) -> None:
     """
     将用户选定的文本文件导入到向量库，以便在写作时检索。

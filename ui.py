@@ -21,15 +21,18 @@ from novel_generator import (
 )
 from consistency_checker import check_consistency
 
+
 def log_error(message: str):
     """
     用于打印详细的错误信息和堆栈信息。
     """
     logging.error(f"{message}\n{traceback.format_exc()}")
 
+
 # 设置全局主题和颜色
 ctk.set_appearance_mode("System")
 ctk.set_default_color_theme("blue")
+
 
 class NovelGeneratorGUI:
     def __init__(self, master):
@@ -56,7 +59,7 @@ class NovelGeneratorGUI:
         self.interface_format_var = ctk.StringVar(value=self.loaded_config.get("interface_format", "OpenAI"))
         self.model_name_var = ctk.StringVar(value=self.loaded_config.get("model_name", "gpt-4o-mini"))
 
-        self.embedding_url_var = ctk.StringVar(value=self.loaded_config.get("embedding_url", "")) 
+        self.embedding_url_var = ctk.StringVar(value=self.loaded_config.get("embedding_url", ""))
         self.embedding_model_name_var = ctk.StringVar(value=self.loaded_config.get("embedding_model_name", ""))
 
         self.temperature_var = ctk.DoubleVar(value=self.loaded_config.get("temperature", 0.7))
@@ -143,8 +146,8 @@ class NovelGeneratorGUI:
 
         # 章节草稿：可编辑
         self.chapter_result = ctk.CTkTextbox(
-            self.left_frame, 
-            wrap="word", 
+            self.left_frame,
+            wrap="word",
             font=("Microsoft YaHei", 14)
         )
         self.chapter_result.grid(row=1, column=0, sticky="nsew", padx=5, pady=(0, 5))
@@ -232,8 +235,8 @@ class NovelGeneratorGUI:
         self.config_frame.grid(row=0, column=0, sticky="ew", padx=5, pady=5)
         self.config_frame.columnconfigure(0, weight=1)
 
-        self.build_config_tabview()       # LLM、Embedding等配置
-        self.build_main_buttons_area()    # 保存/加载配置
+        self.build_config_tabview()  # LLM、Embedding等配置
+        self.build_main_buttons_area()  # 保存/加载配置
 
         # 2) 小说参数
         self.build_novel_params_area(start_row=1)
@@ -393,7 +396,7 @@ class NovelGeneratorGUI:
             variable=self.temperature_var
         )
         temp_scale.grid(row=4, column=1, padx=5, pady=5, sticky="we")
-        
+
         self.temp_value_label = ctk.CTkLabel(
             self.ai_config_tab,
             text=f"{self.temperature_var.get():.2f}",
@@ -540,7 +543,7 @@ class NovelGeneratorGUI:
             font=("Microsoft YaHei", 12)
         )
         filepath_label.grid(row=4, column=0, padx=5, pady=5, sticky="e")
-        
+
         self.filepath_frame = ctk.CTkFrame(self.params_frame)
         self.filepath_frame.grid(row=4, column=1, padx=5, pady=5, sticky="nsew")
         self.filepath_frame.columnconfigure(0, weight=1)
@@ -737,10 +740,12 @@ class NovelGeneratorGUI:
         )
         self.chapter_select_menu.grid(row=0, column=2, padx=5, pady=5, sticky="w")
 
-        save_btn = ctk.CTkButton(top_frame, text="保存修改", command=self.save_current_chapter, font=("Microsoft YaHei", 12))
+        save_btn = ctk.CTkButton(top_frame, text="保存修改", command=self.save_current_chapter,
+                                 font=("Microsoft YaHei", 12))
         save_btn.grid(row=0, column=3, padx=5, pady=5, sticky="w")
 
-        refresh_btn = ctk.CTkButton(top_frame, text="刷新章节列表", command=self.refresh_chapters_list, font=("Microsoft YaHei", 12))
+        refresh_btn = ctk.CTkButton(top_frame, text="刷新章节列表", command=self.refresh_chapters_list,
+                                    font=("Microsoft YaHei", 12))
         refresh_btn.grid(row=0, column=4, padx=5, pady=5, sticky="e")
 
         self.chapter_view_text = ctk.CTkTextbox(self.chapters_view_tab, wrap="word", font=("Microsoft YaHei", 12))
@@ -917,7 +922,7 @@ class NovelGeneratorGUI:
             logging.error("未选择文件保存路径")
             return False
 
-        def task(over_state:list[bool]|None=None):
+        def task(over_state: list[bool] | None = None):
             self.disable_button_safe(self.btn_generate_setting)
             try:
                 api_key = self.api_key_var.get().strip()
@@ -962,7 +967,7 @@ class NovelGeneratorGUI:
             logging.error("未选择文件保存路径")
             return False
 
-        def task(over_state:list[bool]|None=None):
+        def task(over_state: list[bool] | None = None):
             self.disable_button_safe(self.btn_generate_directory)
             try:
                 api_key = self.api_key_var.get().strip()
@@ -1001,7 +1006,7 @@ class NovelGeneratorGUI:
             logging.error("未选择文件保存路径")
             return False
 
-        def task(over_state:list[bool]|None=None):
+        def task(over_state: list[bool] | None = None):
             self.disable_button_safe(self.btn_generate_chapter)
             try:
                 api_key = self.api_key_var.get().strip()
@@ -1090,7 +1095,7 @@ class NovelGeneratorGUI:
             logging.error("未选择文件保存路径")
             return False
 
-        def task(over_state:list[bool]|None=None):
+        def task(over_state: list[bool] | None = None):
             self.disable_button_safe(self.btn_finalize_chapter)
             try:
                 api_key = self.api_key_var.get().strip()
@@ -1189,8 +1194,6 @@ class NovelGeneratorGUI:
 
         threading.Thread(target=task, daemon=True).start()
 
-
-
     # ------------------ 导入知识库/清空向量库/查看剧情要点 ------------------
     def import_knowledge_handler(self):
         selected_file = filedialog.askopenfilename(
@@ -1217,6 +1220,7 @@ class NovelGeneratorGUI:
                     self.enable_button_safe(self.btn_import_knowledge)
 
             threading.Thread(target=task, daemon=True).start()
+
     def on_key_gen_handler(self):
         def task():
             import time
@@ -1241,18 +1245,19 @@ class NovelGeneratorGUI:
                 logging.info("目录成功")
                 logging.info("每个环节之间休息30s...")
                 time.sleep(30)
-            for i in range(start_chapter, self.num_chapters_var.get()+1):
+            for i in range(start_chapter, self.num_chapters_var.get() + 1):
                 res = [False]
                 t = threading.Thread(target=self.gen_chapter, daemon=True, args=(i, start_chapter, res))
                 t.start()
                 logging.info(f"第{i}章线程启动，最大等待时间为20分钟")
-                t.join(timeout=60*20)
+                t.join(timeout=60 * 20)
                 while not res[0]:
                     time.sleep(30)
                     logging.info(f"第{i}章线程超时，正在重试，最大等待时间为20分钟")
                     t = threading.Thread(target=self.gen_chapter, daemon=True, args=(i, start_chapter, res))
                     t.start()
                     t.join(timeout=60 * 20)
+
         threading.Thread(target=task, daemon=True).start()
 
     def gen_chapter(self, i, start_chapter, res: list):
@@ -1272,7 +1277,6 @@ class NovelGeneratorGUI:
         logging.info("每章休息1分钟...")
         res[0] = True
         time.sleep(60)
-
 
     def do_until_success(self, func, arg):
         import time
@@ -1404,6 +1408,7 @@ class NovelGeneratorGUI:
         clear_file_content(summary_file)
         save_string_to_txt(content, summary_file)
         self.log("已保存对 global_summary.txt 的修改。")
+
 
 # 入口
 if __name__ == "__main__":
